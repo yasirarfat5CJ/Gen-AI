@@ -27,12 +27,8 @@ st.set_page_config(page_title="Web Search Chatbot")
 
 import os
 
-api_key = st.sidebar.text_input(
-    "Groq API Key",
-    type="password",
-    value=os.getenv("GROQ_API_KEY", "")
-)
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # =============================
 # Tools Setup
