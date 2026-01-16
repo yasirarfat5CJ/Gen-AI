@@ -20,9 +20,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 
 
-# =============================
-# Sidebar
-# =============================
+
 st.set_page_config(page_title="Web Search Chatbot")
 
 import os
@@ -33,9 +31,7 @@ api_key = st.sidebar.text_input(
     value=os.getenv("GROQ_API_KEY", "")
 )
 
-# =============================
-# Tools Setup
-# =============================
+
 search_tool = DuckDuckGoSearchRun(name="Search")
 
 wiki_tool = WikipediaQueryRun(
@@ -53,9 +49,7 @@ tools = {
 }
 
 
-# =============================
-# Session State
-# =============================
+
 if "messages" not in st.session_state:
     st.session_state.messages = [
         AIMessage(content="Hi! I can search the web and reference tools.")
@@ -66,9 +60,7 @@ for msg in st.session_state.messages:
     st.chat_message(role).write(msg.content)
 
 
-# =============================
-# Prompt Template
-# =============================
+
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", "You are a helpful assistant that uses tools when needed."),
@@ -77,9 +69,6 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 
-# =============================
-# Chat Input
-# =============================
 if user_input := st.chat_input("Ask anything..."):
 
     if not api_key:
@@ -91,11 +80,11 @@ if user_input := st.chat_input("Ask anything..."):
 
     llm = ChatGroq(
         groq_api_key=api_key,
-        model_name="llama-3.1-8b-instant",
+        model_name="llama-3.3-70b-versatile",
         streaming=True,
     )
 
-    # Combine prompt + model
+    
     chain = prompt | llm
 
     with st.chat_message("assistant"):
