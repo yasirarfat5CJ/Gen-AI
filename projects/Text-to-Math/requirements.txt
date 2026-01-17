@@ -1,0 +1,7 @@
+streamlit
+langchain-core
+langchain-community
+langchain-groq
+langchain-classic
+wikipedia
+numexpr 
