@@ -1,91 +1,98 @@
 import json
-import os 
+import os
 import sys
 import boto3
 import streamlit as st
+import shutil
 
-## we will be using titan embedding models  to generate embeddings 
+## we will be using titan embedding models to generate embeddings
 from langchain_aws import BedrockEmbeddings
 from langchain_community.llms import Bedrock
 
-import  numpy as np
+import numpy as np
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-##vector embeddings and vector store
+## vector embeddings and vector store
 from langchain_community.vectorstores import FAISS
 
-##LLm models
+## LLM models
 from langchain_core.prompts import PromptTemplate
-from langchain_classic.chains import retrieval_qa
-from langchain_community.chat_models import BedrockChat
 
-##Bedrock client
-bedrock=boto3.client(service_name="bedrock-runtime")
-bedrock_embeddings=BedrockEmbeddings(model_id="amazon.titan-embed-text-v2:0",client=bedrock)
+## Bedrock client
+bedrock = boto3.client(service_name="bedrock-runtime")
 
-## Data ingestion
+bedrock_embeddings = BedrockEmbeddings(
+    model_id="amazon.titan-embed-text-v2:0",
+    client=bedrock
+)
+
+# -------------------- DATA INGESTION --------------------
 def data_ingestion():
-    loader=PyPDFDirectoryLoader("data")
-    documents=loader.load()
+    documents = []
 
-    ## splitting
-    text_splitter=RecursiveCharacterTextSplitter(chunk_size=10000,chunk_overlap=1000)
-    split_docs=text_splitter.split_documents(documents)
+    for file in os.listdir("data"):
+        if file.endswith(".pdf"):
+            loader = PyPDFLoader(os.path.join("data", file))
+            documents.extend(loader.load())
 
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=10000,
+        chunk_overlap=1000
+    )
+
+    split_docs = text_splitter.split_documents(documents)
     return split_docs
 
-## vecor embedding and vector store 
+
+# -------------------- VECTOR STORE --------------------
 def get_vector_store(docs):
-    vectorstore_faiss=FAISS.from_documents(
+  
+    if os.path.exists("faiss_index"):
+        shutil.rmtree("faiss_index")
+
+    vectorstore_faiss = FAISS.from_documents(
         docs,
         bedrock_embeddings
     )
     vectorstore_faiss.save_local("faiss_index")
 
-# def get_claude_llm():
-#     llm = BedrockChat(
-#         model_id="anthropic.claude-3-sonnet-20240229-v1:0",
-#         client=bedrock,
-#         model_kwargs={
-#             "max_tokens": 512,
-#             "temperature": 0.5
-#         }
-#     )
-#     return llm
-
-
-
+# -------------------- LLM --------------------
 def get_llama2_llm():
-    llm=Bedrock(model_id="meta.llama3-70b-instruct-v1:0",client=bedrock,
-                model_kwargs={'max_gen_len':512}
-                )
-    return llm
+    return Bedrock(
+        model_id="meta.llama3-70b-instruct-v1:0",
+        client=bedrock,
+        model_kwargs={"max_gen_len": 512}
+    )
 
-prompt_template="""
+# -------------------- PROMPT --------------------
+prompt_template = """
+Human:
+Use ONLY the context below to answer the question.
+If the answer is not present in the context, say "I don't know".
+Do NOT use prior knowledge.
 
-Human: Use the followingpieces of context to provide a 
-xoncise answer to the question at the end explain in detail.
-if you dont know the answer, just say that you don't know try 
-to  make up an answer
 <context>
 {context}
-<context>
+</context>
 
-Question:{question}
+Question: {question}
 
 Assistant:
 """
-PROMPT=PromptTemplate(
-    template=prompt_template,input_variables={"context","question"}
+
+PROMPT = PromptTemplate(
+    template=prompt_template,
+    input_variables=["context", "question"]
 )
 
+# -------------------- RAG CHAIN --------------------
 def get_response_llm(llm, vectorstore_faiss, query):
     retriever = vectorstore_faiss.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": 3}
+        search_kwargs={"k": 15}   
     )
 
     chain = (
@@ -97,27 +104,57 @@ def get_response_llm(llm, vectorstore_faiss, query):
 
     return chain.invoke(query)
 
-
+# -------------------- STREAMLIT APP --------------------
 def main():
-    st.set_page_config("Chat PDf")
-    st.header("Chat with Pdf using AWS Bedrock")
+    st.set_page_config("Chat PDF")
+    st.header("Chat with PDF using AWS Bedrock")
 
-    user_question=st.text_input("Ask a Question from the PDF  Files")
+    # ---------- PDF UPLOAD ----------
+    st.subheader("Upload your PDF")
 
+    uploaded_files = st.file_uploader(
+        "Upload one or more PDF files",
+        type=["pdf"],
+        accept_multiple_files=True
+    )
+
+    if uploaded_files:
+      
+        if os.path.exists("data"):
+            shutil.rmtree("data")
+
+        os.makedirs("data", exist_ok=True)
+
+        for uploaded_file in uploaded_files:
+            file_path = os.path.join("data", uploaded_file.name)
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+
+        st.success("PDF uploaded successfully. Click 'Vectors Update'.")
+
+    user_question = st.text_input("Ask a Question from the PDF Files")
+
+    # ---------- SIDEBAR ----------
     with st.sidebar:
-        st.title("Update Or create vector store")
+        st.title("Update Or Create Vector Store")
 
         if st.button("Vectors Update"):
-            with st.spinner("processing..."):
-                docs=data_ingestion()
+            with st.spinner("Processing documents..."):
+                docs = data_ingestion()
                 get_vector_store(docs)
-                st.success("Done")
-    if st.button("output"):
-        with st.spinner("processing..."):
-            faiss_index=FAISS.load_local("faiss_index",bedrock_embeddings,allow_dangerous_deserialization=True)
-            llm=get_llama2_llm()
+                st.success("Vector store updated")
 
-            st.write(get_response_llm(llm,faiss_index,user_question))
-            st.success("Done")
-if __name__ =="__main__":
+    # ---------- OUTPUT ----------
+    if st.button("Output"):
+        with st.spinner("Generating answer..."):
+            faiss_index = FAISS.load_local(
+                "faiss_index",
+                bedrock_embeddings,
+                allow_dangerous_deserialization=True
+            )
+            llm = get_llama2_llm()
+            response = get_response_llm(llm, faiss_index, user_question)
+            st.write(response)
+
+if __name__ == "__main__":
     main()
