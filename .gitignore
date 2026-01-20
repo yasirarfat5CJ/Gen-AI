@@ -13,3 +13,5 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+
+Aws-bedrock/Document-Q-and-A/faiss_index/
