@@ -4,7 +4,6 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import Tool 
 from langchain_community.utilities import WikipediaAPIWrapper
 
-
 from langchain_classic.chains import LLMMathChain
 from langchain_classic.agents import AgentExecutor, create_react_agent
 
@@ -22,7 +21,6 @@ if not groq_api_key:
 
 # Initialize LLM
 llm = ChatGroq(groq_api_key=groq_api_key, model_name="llama-3.3-70b-versatile")
-
 
 template = """Answer the following questions as best you can. You have access to the following tools:
 
@@ -46,9 +44,9 @@ Thought: {agent_scratchpad}"""
 
 react_prompt = PromptTemplate.from_template(template)
 
-# --- 2. Tool Definitions ---
+# --- Tool Definitions ---
 
-# Wikipedia
+# Wikipedia Tool
 wiki_wrapper = WikipediaAPIWrapper()
 wiki_tool = Tool(
     name="Wikipedia",
@@ -56,7 +54,7 @@ wiki_tool = Tool(
     description="Useful for searching the internet for background information."
 )
 
-# Calculator
+# Calculator Tool
 math_chain = LLMMathChain.from_llm(llm=llm)
 calc_tool = Tool(
     name="Calculator",
@@ -64,7 +62,7 @@ calc_tool = Tool(
     description="Useful for math questions. Input should be a math expression like '2+2'."
 )
 
-# Reasoning
+# Reasoning Tool
 reasoning_prompt = PromptTemplate(
     input_variables=["question"],
     template="Solve the math question logically with a detailed explanation.\nQuestion:{question}\nAnswer:"
@@ -78,9 +76,7 @@ reasoning_tool = Tool(
 
 tools = [wiki_tool, calc_tool, reasoning_tool]
 
-# --- 3. Agent Initialization ---
-
-# Initialize the Agent using the manual react_prompt
+# --- Agent Initialization ---
 agent = create_react_agent(llm, tools, react_prompt)
 agent_executor = AgentExecutor(
     agent=agent, 
@@ -89,13 +85,15 @@ agent_executor = AgentExecutor(
     handle_parsing_errors=True
 )
 
-# --- 4. Streamlit Chat UI ---
+# --- Streamlit Chat UI ---
 
 if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "assistant", "content": "Hi! I can help with math or research. What's on your mind?"}]
+    st.session_state["messages"] = [
+        {"role": "assistant", "content": "Hi! I can help with math or research. What's on your mind?"}
+    ]
 
 for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg['content'])
+    st.chat_message(msg["role"]).write(msg["content"])
 
 question = st.text_area("Enter your question:")
 
@@ -106,16 +104,18 @@ if st.button("Find my Answer"):
             st.chat_message("user").write(question)
 
             with st.chat_message("assistant"):
-                st_cb = StreamlitCallbackHandler(st.container())
-                
-                # Execute the agent
+                # ✅ FIX: use st.empty() instead of st.container()
+                st_cb = StreamlitCallbackHandler(st.empty())
+
                 response = agent_executor.invoke(
                     {"input": question},
                     {"callbacks": [st_cb]}
                 )
-                
+
                 final_answer = response["output"]
-                st.session_state.messages.append({"role": "assistant", "content": final_answer})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": final_answer}
+                )
                 st.write(final_answer)
     else:
         st.warning("Please enter a question.")
