@@ -7,8 +7,6 @@ from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_classic.chains import LLMMathChain
 from langchain_classic.agents import AgentExecutor, create_react_agent
 
-from langchain_community.callbacks import StreamlitCallbackHandler
-
 # Page Setup
 st.set_page_config(page_title="Math & Data Assistant", page_icon="🧮")
 st.title("Text to Math Problem Solver & Data Search")
@@ -95,18 +93,17 @@ question = st.text_area("Enter your question:")
 if st.button("Find my Answer"):
     if question:
         with st.spinner("Processing..."):
-            st.session_state.messages.append({"role": "user", "content": question})
+            st.session_state.messages.append(
+                {"role": "user", "content": question}
+            )
             st.chat_message("user").write(question)
 
-            assistant_placeholder = st.empty()
-            st_cb = StreamlitCallbackHandler(assistant_placeholder)
-
             response = agent_executor.invoke(
-                {"input": question},
-                {"callbacks": [st_cb]}
+                {"input": question}
             )
 
             final_answer = response["output"]
+
             st.session_state.messages.append(
                 {"role": "assistant", "content": final_answer}
             )
