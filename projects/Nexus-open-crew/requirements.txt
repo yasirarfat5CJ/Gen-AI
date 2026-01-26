@@ -1,0 +1,5 @@
+crewai
+langchain-community
+ollama
+#deepseek-v3 it is good for reasoning and planning 
+##lllama3.2 good for writing and formatting 
