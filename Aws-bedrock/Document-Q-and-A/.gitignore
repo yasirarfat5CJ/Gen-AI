@@ -1,0 +1,12 @@
+.env
+.env.*
+.venv/
+
+__pycache__/
+*.pyc
+.cache/
+faiss_index/
+*.db
+.vscode/
+# Aws-bedrock/Document-Q-and-A/data/*.pdf
+data/*.pdf
