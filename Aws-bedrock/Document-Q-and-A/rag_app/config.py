@@ -8,7 +8,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 
-@dataclass(slots=True)
+@dataclass
 class AppConfig:
     aws_region: str = field(default_factory=lambda: os.getenv("AWS_REGION", "us-east-1"))
     embeddings_model_id: str = field(
