@@ -32,7 +32,7 @@ def _format_context(documents: list[Document], max_chars: int) -> str:
     return "\n\n".join(blocks)
 
 
-@dataclass(slots=True)
+@dataclass
 class AnswerBundle:
     answer: str
     context: RetrievedContext

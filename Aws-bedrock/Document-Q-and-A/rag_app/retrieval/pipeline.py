@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Optional
 
 from langchain_core.documents import Document
 
@@ -13,7 +14,7 @@ from rag_app.retrieval.reranker import LLMReranker
 from rag_app.vectorstore.faiss_store import LocalFAISSStore
 
 
-@dataclass(slots=True)
+@dataclass
 class RetrievedContext:
     documents: list[Document]
     rewritten_queries: list[str]
@@ -33,7 +34,7 @@ class RetrievalPipeline:
         self.query_rewriter = query_rewriter
         self.reranker = reranker
         self.compressor = compressor
-        self._bm25_index: BM25Index | None = None
+        self._bm25_index: Optional[BM25Index] = None
 
     def retrieve(self, question: str, chat_history: list[dict[str, str]]) -> RetrievedContext:
         documents = self.vector_store.load_documents()

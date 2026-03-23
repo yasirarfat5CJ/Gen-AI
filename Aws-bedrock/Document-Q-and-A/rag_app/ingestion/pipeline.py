@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List, Optional
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
@@ -12,7 +12,7 @@ from rag_app.config import AppConfig
 from rag_app.ingestion.chunker import build_chunker, enrich_chunk_metadata
 
 
-@dataclass(slots=True)
+@dataclass
 class IngestionResult:
     documents: list[Document]
     errors: list[str]
@@ -48,7 +48,7 @@ def save_uploaded_files(uploaded_files: Iterable, data_dir: Path) -> list[Path]:
     return saved_paths
 
 
-def ingest_documents(config: AppConfig, source_paths: list[Path] | None = None) -> IngestionResult:
+def ingest_documents(config: AppConfig, source_paths: Optional[List[Path]] = None) -> IngestionResult:
     pdf_paths = source_paths or sorted(config.data_dir.glob("*.pdf"))
     raw_documents: list[Document] = []
     errors: list[str] = []
